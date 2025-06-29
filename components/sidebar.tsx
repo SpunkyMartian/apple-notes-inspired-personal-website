@@ -6,7 +6,6 @@ import {
   useCallback,
   useRef,
   useMemo,
-  useContext,
 } from "react";
 import { usePathname } from "next/navigation";
 import SessionId from "./session-id";
@@ -16,10 +15,9 @@ import { CommandMenu } from "./command-menu";
 import { SidebarContent } from "./sidebar-content";
 import SearchBar from "./search";
 import { groupNotesByCategory, sortGroupedNotes } from "@/lib/note-utils";
-import { createClient } from "@/utils/supabase/client";
 import { Note } from "@/lib/types";
 import { toast } from "./ui/use-toast";
-import { SessionNotesContext } from "@/app/session-notes";
+import { LocalNotesStorage } from "@/lib/local-storage";
 
 const labels = {
   pinned: (
@@ -37,22 +35,23 @@ const labels = {
 const categoryOrder = ["pinned", "today", "yesterday", "7", "30", "older"];
 
 export default function Sidebar({
-  notes: publicNotes,
+  notes,
   onNoteSelect,
   isMobile,
+  refreshNotes,
 }: {
-  notes: any[];
-  onNoteSelect: (note: any) => void;
+  notes: Note[];
+  onNoteSelect: (note: Note) => void;
   isMobile: boolean;
+  refreshNotes: () => void;
 }) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [selectedNoteSlug, setSelectedNoteSlug] = useState<string | null>(null);
   const [pinnedNotes, setPinnedNotes] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [localSearchResults, setLocalSearchResults] = useState<any[] | null>(
+  const [localSearchResults, setLocalSearchResults] = useState<Note[] | null>(
     null
   );
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -63,22 +62,15 @@ export default function Sidebar({
   );
   const [highlightedNote, setHighlightedNote] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sessionId, setSessionId] = useState<string>("");
 
   const commandMenuRef = useRef<{ setOpen: (open: boolean) => void } | null>(
     null
   );
 
-  const {
-    notes: sessionNotes,
-    sessionId,
-    setSessionId,
-    refreshSessionNotes,
-  } = useContext(SessionNotesContext);
-
-  const notes = useMemo(
-    () => [...publicNotes, ...sessionNotes],
-    [publicNotes, sessionNotes]
-  );
+  useEffect(() => {
+    setSessionId(LocalNotesStorage.getSessionId());
+  }, []);
 
   useEffect(() => {
     if (pathname) {
@@ -218,22 +210,7 @@ export default function Sidebar({
       }
 
       try {
-        if (noteToDelete.id && sessionId) {
-          await supabase.rpc('delete_note', {
-            uuid_arg: noteToDelete.id,
-            session_arg: sessionId
-          });
-        }
-
-        setGroupedNotes((prevGroupedNotes: Record<string, Note[]>) => {
-          const newGroupedNotes = { ...prevGroupedNotes };
-          for (const category in newGroupedNotes) {
-            newGroupedNotes[category] = newGroupedNotes[category].filter(
-              (note: Note) => note.slug !== noteToDelete.slug
-            );
-          }
-          return newGroupedNotes;
-        });
+        LocalNotesStorage.deleteNote(noteToDelete.id);
 
         const allNotes = flattenedNotes();
         const deletedNoteIndex = allNotes.findIndex(
@@ -252,8 +229,7 @@ export default function Sidebar({
         }
 
         clearSearch();
-        refreshSessionNotes();
-        router.refresh();
+        refreshNotes();
 
         toast({
           description: "Note deleted",
@@ -263,12 +239,10 @@ export default function Sidebar({
       }
     },
     [
-      supabase,
-      sessionId,
       flattenedNotes,
       isMobile,
       clearSearch,
-      refreshSessionNotes,
+      refreshNotes,
       router,
     ]
   );
@@ -358,7 +332,7 @@ export default function Sidebar({
   ]);
 
   const handleNoteSelect = useCallback(
-    (note: any) => {
+    (note: Note) => {
       onNoteSelect(note);
       if (!isMobile) {
         router.push(`/${note.slug}`);
@@ -381,6 +355,7 @@ export default function Sidebar({
         highlightedNote={highlightedNote}
         setSelectedNoteSlug={setSelectedNoteSlug}
         isMobile={isMobile}
+        refreshNotes={refreshNotes}
       />
       <div className="flex-1 overflow-y-auto">
         <SearchBar
@@ -411,6 +386,7 @@ export default function Sidebar({
           clearSearch={clearSearch}
           setSelectedNoteSlug={setSelectedNoteSlug}
           isMobile={isMobile}
+          refreshNotes={refreshNotes}
         />
       </div>
     </div>

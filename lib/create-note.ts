@@ -1,17 +1,15 @@
-import { v4 as uuidv4 } from "uuid";
-import { createClient } from "@/utils/supabase/client";
+import { LocalNotesStorage } from "./local-storage";
 import { toast } from "@/components/ui/use-toast";
 
 export async function createNote(
   sessionId: string | null,
   router: any,
   addNewPinnedNote: (slug: string) => void,
-  refreshSessionNotes: () => Promise<void>,
+  refreshNotes: () => void,
   setSelectedNoteSlug: (slug: string | null) => void,
   isMobile: boolean
 ) {
-  const supabase = createClient();
-  const noteId = uuidv4();
+  const noteId = crypto.randomUUID();
   const slug = `new-note-${noteId}`;
 
   const note = {
@@ -21,27 +19,24 @@ export async function createNote(
     content: "",
     public: false,
     created_at: new Date().toISOString(),
-    session_id: sessionId,
+    session_id: sessionId || "",
     category: "today",
     emoji: "👋🏼",
   };
 
   try {
-    const { error } = await supabase.from("notes").insert(note);
-
-    if (error) throw error;
+    LocalNotesStorage.addNote(note);
 
     addNewPinnedNote(slug);
 
     if (!isMobile) {
-      refreshSessionNotes().then(() => {
-        setSelectedNoteSlug(slug);
-        router.push(`/${slug}`);
-        router.refresh();
-      });
+      refreshNotes();
+      setSelectedNoteSlug(slug);
+      router.push(`/${slug}`);
+      router.refresh();
     } else {
       router.push(`/${slug}`).then(() => {
-        refreshSessionNotes();
+        refreshNotes();
         setSelectedNoteSlug(slug);
       });
     }

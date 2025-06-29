@@ -1,23 +1,19 @@
 import Note from "@/components/note";
-import { createClient as createBrowserClient } from "@/utils/supabase/client";
+import { LocalNotesStorage } from "@/lib/local-storage";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import { Note as NoteType } from "@/lib/types";
 
-export const dynamic = "error";
-export const revalidate = 60 * 60 * 24;
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  const supabase = createBrowserClient();
   const slug = params.slug;
-
-  const { data: note } = await supabase.rpc("select_note", {
-    note_slug_arg: slug,
-  }).single() as { data: NoteType | null };
+  const notes = LocalNotesStorage.getNotes();
+  const note = notes.find(n => n.slug === slug);
 
   const title = note?.title || "new note";
   const emoji = note?.emoji || "👋🏼";
@@ -34,29 +30,14 @@ export async function generateMetadata({
   };
 }
 
-export async function generateStaticParams() {
-  const supabase = createBrowserClient();
-  const { data: posts } = await supabase
-    .from("notes")
-    .select("slug")
-    .eq("public", true);
-
-  return posts!.map(({ slug }) => ({
-    slug,
-  }));
-}
-
-export default async function NotePage({
+export default function NotePage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const supabase = createBrowserClient();
   const slug = params.slug;
-
-  const { data: note } = await supabase.rpc("select_note", {
-    note_slug_arg: slug,
-  }).single();
+  const notes = LocalNotesStorage.getNotes();
+  const note = notes.find(n => n.slug === slug);
 
   if (!note) {
     redirect("/error");

@@ -1,24 +1,21 @@
 "use client";
 
-import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import NoteHeader from "./note-header";
 import NoteContent from "./note-content";
 import SessionId from "./session-id";
-import { useState, useCallback, useRef, useContext } from "react";
-import { SessionNotesContext } from "@/app/session-notes";
+import { useState, useCallback, useRef } from "react";
+import { LocalNotesStorage } from "@/lib/local-storage";
+import { Note as NoteType } from "@/lib/types";
 
-export default function Note({ note: initialNote }: { note: any }) {
-  const supabase = createClient();
+export default function Note({ note: initialNote }: { note: NoteType }) {
   const router = useRouter();
   const [note, setNote] = useState(initialNote);
   const [sessionId, setSessionId] = useState("");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { refreshSessionNotes } = useContext(SessionNotesContext);
-
   const saveNote = useCallback(
-    async (updates: Partial<typeof note>) => {
+    async (updates: Partial<NoteType>) => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -29,44 +26,15 @@ export default function Note({ note: initialNote }: { note: any }) {
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           if (note.id && sessionId) {
-            if ('title' in updates) {
-              await supabase.rpc("update_note_title", {
-                uuid_arg: note.id,
-                session_arg: sessionId,
-                title_arg: updatedNote.title,
-              });
-            }
-            if ('emoji' in updates) {
-              await supabase.rpc("update_note_emoji", {
-                uuid_arg: note.id,
-                session_arg: sessionId,
-                emoji_arg: updatedNote.emoji,
-              });
-            }
-            if ('content' in updates) {
-              await supabase.rpc("update_note_content", {
-                uuid_arg: note.id,
-                session_arg: sessionId,
-                content_arg: updatedNote.content,
-              });
-            }
+            LocalNotesStorage.updateNote(note.id, updates);
           }
-
-          await fetch("/revalidate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ slug: note.slug }),
-          });
-          refreshSessionNotes();
           router.refresh();
         } catch (error) {
           console.error("Save failed:", error);
         }
       }, 500);
     },
-    [note, supabase, router, refreshSessionNotes, sessionId]
+    [note, router, sessionId]
   );
 
   const canEdit = sessionId === note.session_id;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Tooltip,
@@ -11,23 +11,22 @@ import {
 import { Icons } from "./icons";
 import SessionId from "./session-id";
 import { createNote } from "@/lib/create-note";
-import { SessionNotesContext } from "@/app/session-notes";
 
 export default function NewNote({
   addNewPinnedNote,
   clearSearch,
   setSelectedNoteSlug,
   isMobile,
+  refreshNotes,
 }: {
   addNewPinnedNote: (slug: string) => void;
   clearSearch: () => void;
   setSelectedNoteSlug: (slug: string | null) => void;
   isMobile: boolean;
+  refreshNotes: () => void;
 }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const router = useRouter();
-
-  const { refreshSessionNotes } = useContext(SessionNotesContext);
 
   const handleCreateNote = useCallback(() => {
     clearSearch();
@@ -35,7 +34,7 @@ export default function NewNote({
       sessionId,
       router,
       addNewPinnedNote,
-      refreshSessionNotes,
+      refreshNotes,
       setSelectedNoteSlug,
       isMobile
     );
@@ -44,7 +43,7 @@ export default function NewNote({
     router,
     addNewPinnedNote,
     clearSearch,
-    refreshSessionNotes,
+    refreshNotes,
     setSelectedNoteSlug,
     isMobile,
   ]);

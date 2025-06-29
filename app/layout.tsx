@@ -3,7 +3,6 @@ import { Inter as FontSans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
-import { createClient as createBrowserClient } from "@/utils/supabase/client";
 import SidebarLayout from "@/components/sidebar-layout";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -18,19 +17,11 @@ export const metadata: Metadata = {
   description: siteConfig.description,
 };
 
-export const revalidate = 0;
-
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = createBrowserClient();
-  const { data: notes } = await supabase
-    .from("notes")
-    .select("*")
-    .eq("public", true);
-
   return (
     <html lang="en">
       <head>
@@ -49,7 +40,7 @@ export default async function RootLayout({
       <body
         className={cn("min-h-dvh font-sans antialiased", fontSans.variable)}
       >
-        <SidebarLayout notes={notes}>
+        <SidebarLayout>
           <Analytics />
           {children}
         </SidebarLayout>

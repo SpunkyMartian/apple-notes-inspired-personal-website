@@ -22,6 +22,7 @@ interface SidebarContentProps {
   clearSearch: () => void;
   setSelectedNoteSlug: (slug: string | null) => void;
   isMobile: boolean;
+  refreshNotes: () => void;
 }
 
 export function SidebarContent({
@@ -42,6 +43,7 @@ export function SidebarContent({
   clearSearch,
   setSelectedNoteSlug,
   isMobile,
+  refreshNotes,
 }: SidebarContentProps) {
   const router = useRouter();
 
@@ -79,6 +81,7 @@ export function SidebarContent({
           clearSearch={clearSearch}
           setSelectedNoteSlug={setSelectedNoteSlug}
           isMobile={isMobile}
+          refreshNotes={refreshNotes}
         />
       </div>
       {localSearchResults === null ? (
